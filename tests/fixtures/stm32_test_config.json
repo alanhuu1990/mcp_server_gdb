@@ -1,0 +1,212 @@
+{
+  "test_configuration": {
+    "name": "STM32F429 GDB Debug Tests",
+    "version": "1.0.0",
+    "description": "Comprehensive test suite for STM32 GDB debugging functionality"
+  },
+  "hardware_requirements": {
+    "board": "STM32F429 Discovery or compatible",
+    "connection": "USB ST-Link",
+    "firmware": "Counter application (tests/stm32-f0-disco/stm32-f429)",
+    "optional": true,
+    "note": "Tests will skip hardware-dependent scenarios if not available"
+  },
+  "software_requirements": {
+    "gdb": {
+      "command": "arm-none-eabi-gdb",
+      "min_version": "7.0",
+      "required": true
+    },
+    "stlink": {
+      "command": "st-util",
+      "package": "stlink-tools",
+      "required_for_hardware": true
+    },
+    "mcp_server": {
+      "command": "mcp-server-gdb",
+      "path": "target/release/mcp-server-gdb",
+      "required": true
+    }
+  },
+  "test_categories": {
+    "unit": {
+      "description": "Unit tests for MCP GDB server functions",
+      "requires_hardware": false,
+      "timeout_seconds": 30,
+      "test_files": [
+        "tests/unit/test_stm32_gdb_mcp.rs"
+      ]
+    },
+    "integration": {
+      "description": "Integration tests for STM32 debugging sessions",
+      "requires_hardware": true,
+      "timeout_seconds": 60,
+      "test_files": [
+        "tests/integration/test_stm32_debug_session.rs"
+      ]
+    },
+    "hardware": {
+      "description": "Hardware-specific debugging tests",
+      "requires_hardware": true,
+      "timeout_seconds": 120,
+      "test_files": [
+        "tests/hardware/test_stm32_hardware_debug.rs"
+      ]
+    },
+    "e2e": {
+      "description": "End-to-end debugging workflow tests",
+      "requires_hardware": true,
+      "timeout_seconds": 180,
+      "test_files": [
+        "tests/e2e/test_complete_debug_workflow.rs"
+      ]
+    },
+    "performance": {
+      "description": "Performance and timing tests",
+      "requires_hardware": true,
+      "timeout_seconds": 300,
+      "test_files": [
+        "tests/performance/test_debug_performance.rs"
+      ]
+    }
+  },
+  "test_scenarios": {
+    "basic_functionality": {
+      "description": "Basic MCP GDB server functionality",
+      "tests": [
+        "test_create_stm32_gdb_session",
+        "test_set_stm32_breakpoints",
+        "test_get_stm32_registers",
+        "test_stm32_error_handling"
+      ],
+      "requires_hardware": false
+    },
+    "hardware_debugging": {
+      "description": "Real hardware debugging scenarios",
+      "tests": [
+        "test_stm32_hardware_detection",
+        "test_complete_stm32_debug_session",
+        "test_stm32_counter_debugging",
+        "test_stm32_memory_regions"
+      ],
+      "requires_hardware": true
+    },
+    "workflow_testing": {
+      "description": "Complete debugging workflows",
+      "tests": [
+        "test_complete_debug_workflow",
+        "test_automated_script_integration",
+        "test_error_recovery_robustness"
+      ],
+      "requires_hardware": true
+    },
+    "performance_testing": {
+      "description": "Performance and efficiency testing",
+      "tests": [
+        "test_gdb_connection_performance",
+        "test_breakpoint_performance",
+        "test_memory_read_performance",
+        "test_counter_monitoring_performance"
+      ],
+      "requires_hardware": true
+    }
+  },
+  "expected_results": {
+    "counter_behavior": {
+      "increment_interval_ms": 1000,
+      "tolerance_ms": 100,
+      "max_reasonable_value": 1000000,
+      "reset_value": 0
+    },
+    "timing_requirements": {
+      "connection_time_max_ms": 5000,
+      "breakpoint_set_max_ms": 500,
+      "memory_read_max_ms": 2000,
+      "counter_read_max_ms": 10000
+    },
+    "memory_regions": {
+      "flash": {
+        "start": "0x08000000",
+        "accessible": true,
+        "readable": true,
+        "writable": false
+      },
+      "sram": {
+        "start": "0x20000000", 
+        "accessible": true,
+        "readable": true,
+        "writable": true
+      },
+      "ccm_ram": {
+        "start": "0x10000000",
+        "accessible": true,
+        "readable": true,
+        "writable": true
+      }
+    }
+  },
+  "test_environment": {
+    "stlink_server": {
+      "port": 4242,
+      "startup_delay_ms": 3000,
+      "connection_timeout_ms": 5000
+    },
+    "gdb_settings": {
+      "batch_mode": true,
+      "quiet_mode": true,
+      "timeout_seconds": 30
+    },
+    "project_paths": {
+      "workspace": "tests/stm32-f0-disco",
+      "project": "tests/stm32-f0-disco/stm32-f429",
+      "elf_file": "tests/stm32-f0-disco/stm32-f429/Debug/stm32-f429.elf",
+      "source_dir": "tests/stm32-f0-disco/stm32-f429/Core/Src"
+    }
+  },
+  "troubleshooting": {
+    "common_issues": [
+      {
+        "issue": "Hardware not detected",
+        "check": "st-info --probe",
+        "solution": "Connect STM32 board via USB, install ST-Link drivers"
+      },
+      {
+        "issue": "GDB not found",
+        "check": "arm-none-eabi-gdb --version",
+        "solution": "Install ARM GDB toolchain: brew install arm-none-eabi-gdb"
+      },
+      {
+        "issue": "ELF file not found",
+        "check": "ls tests/stm32-f0-disco/stm32-f429/Debug/stm32-f429.elf",
+        "solution": "Build STM32 project first"
+      },
+      {
+        "issue": "ST-Link server fails",
+        "check": "st-util --version",
+        "solution": "Install ST-Link utilities: brew install stlink"
+      },
+      {
+        "issue": "MCP server not available",
+        "check": "mcp-server-gdb --version",
+        "solution": "Build project: cargo build --release"
+      }
+    ],
+    "test_skipping": {
+      "hardware_tests": "Automatically skipped if hardware not detected",
+      "environment_tests": "Skipped if required tools not installed",
+      "timeout_handling": "Tests have individual timeouts to prevent hanging"
+    }
+  },
+  "ci_cd_integration": {
+    "github_actions": {
+      "hardware_tests": "Skip in CI (no hardware available)",
+      "unit_tests": "Always run",
+      "integration_tests": "Run with mock/simulation where possible"
+    },
+    "local_development": {
+      "full_suite": "Run all tests if hardware available",
+      "quick_check": "Run unit tests only",
+      "hardware_validation": "Run hardware tests to verify setup"
+    }
+  }
+}
