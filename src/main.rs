@@ -232,17 +232,43 @@ async fn main() -> Result<(), AppError> {
 
     let args = Args::parse();
 
-    let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "mcp-gdb.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    // Try to create file appender, fall back to stderr if filesystem is read-only
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::try_new(&args.log_level).unwrap_or_else(|_| EnvFilter::new("info"))
+    });
 
-    // Initialize logging
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            EnvFilter::try_new(&args.log_level).unwrap_or_else(|_| EnvFilter::new("info"))
-        }))
-        // needs to go to file due to stdio transport
-        .with(tracing_subscriber::fmt::layer().with_writer(non_blocking))
-        .init();
+    // Use panic hook to catch file creation failures
+    let original_hook = std::panic::take_hook();
+    let mut file_logging_failed = false;
+
+    std::panic::set_hook(Box::new(|_| {
+        // Silently ignore panics during file appender creation
+    }));
+
+    let result = std::panic::catch_unwind(|| {
+        RollingFileAppender::new(Rotation::DAILY, "logs", "mcp-gdb.log")
+    });
+
+    std::panic::set_hook(original_hook);
+
+    match result {
+        Ok(file_appender) => {
+            let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+            // Initialize logging with file output
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer().with_writer(non_blocking))
+                .init();
+        }
+        Err(_) => {
+            eprintln!("Warning: Failed to create log file (read-only filesystem?), falling back to stderr");
+            // Initialize logging with stderr output
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+                .init();
+        }
+    };
 
     // Get configuration
     let config = config::Config::default();

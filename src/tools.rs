@@ -1,4 +1,4 @@
-use std::ffi::OsString;
+
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock};
 
@@ -6,9 +6,58 @@ use anyhow::Result;
 use mcp_core::tool_text_content;
 use mcp_core::types::ToolResponseContent;
 use mcp_core_macros::tool;
+use schemars::{JsonSchema, schema::Schema, schema::SchemaObject};
+use serde::{Deserialize, Serialize};
 
 use crate::gdb::GDBManager;
-use crate::mi::GDB;
+
+/// A positive integer type that generates clean JSON Schema without format specifiers
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct PositiveInt(pub u32);
+
+impl JsonSchema for PositiveInt {
+    fn schema_name() -> String {
+        "integer".to_string()
+    }
+
+    fn json_schema(_gen: &mut schemars::r#gen::SchemaGenerator) -> Schema {
+        Schema::Object(SchemaObject {
+            instance_type: Some(schemars::schema::InstanceType::Integer.into()),
+            number: Some(Box::new(schemars::schema::NumberValidation {
+                minimum: Some(0.0),
+                ..Default::default()
+            })),
+            ..Default::default()
+        })
+    }
+
+    fn is_referenceable() -> bool {
+        false
+    }
+}
+
+/// A signed integer type that generates clean JSON Schema without format specifiers
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SignedInt(pub i32);
+
+impl JsonSchema for SignedInt {
+    fn schema_name() -> String {
+        "integer".to_string()
+    }
+
+    fn json_schema(_gen: &mut schemars::r#gen::SchemaGenerator) -> Schema {
+        Schema::Object(SchemaObject {
+            instance_type: Some(schemars::schema::InstanceType::Integer.into()),
+            ..Default::default()
+        })
+    }
+
+    fn is_referenceable() -> bool {
+        false
+    }
+}
 
 pub static GDB_MANAGER: LazyLock<Arc<GDBManager>> =
     LazyLock::new(|| Arc::new(GDBManager::default()));
@@ -44,13 +93,13 @@ pub async fn create_session_tool(
     nx: Option<bool>,
     quiet: Option<bool>,
     cd: Option<PathBuf>,
-    bps: Option<u32>,
+    bps: Option<PositiveInt>,
     symbol_file: Option<PathBuf>,
     core_file: Option<PathBuf>,
-    proc_id: Option<u32>,
+    proc_id: Option<PositiveInt>,
     command: Option<PathBuf>,
     source_dir: Option<PathBuf>,
-    args: Option<Vec<OsString>>,
+    args: Option<Vec<String>>,
     tty: Option<PathBuf>,
     gdb_path: Option<PathBuf>,
 ) -> Result<ToolResponseContent> {
@@ -61,13 +110,13 @@ pub async fn create_session_tool(
             nx,
             quiet,
             cd,
-            bps,
+            bps.map(|v| v.0),
             symbol_file,
             core_file,
-            proc_id,
+            proc_id.map(|v| v.0),
             command,
             source_dir,
-            args,
+            args.map(|v| v.into_iter().map(|s| s.into()).collect()),
             tty,
             gdb_path,
         )
@@ -143,9 +192,9 @@ pub async fn get_breakpoints_tool(session_id: String) -> Result<ToolResponseCont
 pub async fn set_breakpoint_tool(
     session_id: String,
     file: String,
-    line: usize,
+    line: PositiveInt,
 ) -> Result<ToolResponseContent> {
-    let breakpoint = GDB_MANAGER.set_breakpoint(&session_id, &PathBuf::from(file), line).await?;
+    let breakpoint = GDB_MANAGER.set_breakpoint(&session_id, &PathBuf::from(file), line.0 as usize).await?;
     Ok(tool_text_content!(format!("Set breakpoint: {}", serde_json::to_string(&breakpoint)?)))
 }
 
@@ -185,9 +234,9 @@ pub async fn get_stack_frames_tool(session_id: String) -> Result<ToolResponseCon
 )]
 pub async fn get_local_variables_tool(
     session_id: String,
-    frame_id: Option<usize>,
+    frame_id: Option<PositiveInt>,
 ) -> Result<ToolResponseContent> {
-    let variables = GDB_MANAGER.get_local_variables(&session_id, frame_id).await?;
+    let variables = GDB_MANAGER.get_local_variables(&session_id, frame_id.map(|v| v.0 as usize)).await?;
     Ok(tool_text_content!(format!("Local variables: {}", serde_json::to_string(&variables)?)))
 }
 
@@ -254,10 +303,10 @@ pub async fn get_register_names_tool(
 pub async fn read_memory_tool(
     session_id: String,
     address: String,
-    count: usize,
-    offset: Option<isize>,
+    count: PositiveInt,
+    offset: Option<SignedInt>,
 ) -> Result<ToolResponseContent> {
-    let memory = GDB_MANAGER.read_memory(&session_id, offset, address, count).await?;
+    let memory = GDB_MANAGER.read_memory(&session_id, offset.map(|v| v.0 as isize), address, count.0 as usize).await?;
     Ok(tool_text_content!(format!("Memory: {}", serde_json::to_string(&memory)?)))
 }
 

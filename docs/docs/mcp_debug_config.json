@@ -1,0 +1,239 @@
+{
+  "project": {
+    "name": "STM32F429",
+    "description": "STM32F429 Counter Application Debug Configuration",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "workspace": "/Users/alanhu/development/stm32-f0-disco",
+    "project_dir": "/Users/alanhu/development/stm32-f0-disco/stm32-f429",
+    "build_dir": "/Users/alanhu/development/stm32-f0-disco/stm32-f429/Debug",
+    "elf_file": "/Users/alanhu/development/stm32-f0-disco/stm32-f429/Debug/stm32-f429.elf",
+    "source_dir": "/Users/alanhu/development/stm32-f0-disco/stm32-f429/Core/Src"
+  },
+  "gdb_config": {
+    "gdb_path": "arm-none-eabi-gdb",
+    "init_file": "/Users/alanhu/development/stm32-f0-disco/stm32-f429/.gdbinit",
+    "target_type": "extended-remote",
+    "target_address": "localhost:4242"
+  },
+  "breakpoints": {
+    "strategic": [
+      {
+        "name": "main_entry",
+        "file": "Core/Src/main.c",
+        "line": 77,
+        "description": "HAL_Init() - System initialization"
+      },
+      {
+        "name": "clock_config",
+        "file": "Core/Src/main.c",
+        "line": 84,
+        "description": "SystemClock_Config() - Clock setup"
+      },
+      {
+        "name": "timer_init",
+        "file": "Core/Src/main.c",
+        "line": 94,
+        "description": "Timer variables initialization"
+      },
+      {
+        "name": "counter_increment",
+        "file": "Core/Src/main.c",
+        "line": 112,
+        "description": "counter_1000ms++ - Main counter increment"
+      },
+      {
+        "name": "error_handler",
+        "file": "Core/Src/main.c",
+        "line": 174,
+        "description": "Error_Handler() - Error conditions"
+      }
+    ],
+    "functions": [
+      {
+        "name": "main",
+        "description": "Main application function"
+      },
+      {
+        "name": "HAL_Init",
+        "description": "HAL initialization"
+      },
+      {
+        "name": "SystemClock_Config",
+        "description": "System clock configuration"
+      },
+      {
+        "name": "Error_Handler",
+        "description": "Error handler function"
+      }
+    ]
+  },
+  "variables": {
+    "application": [
+      {
+        "name": "counter_1000ms",
+        "type": "uint32_t",
+        "scope": "main",
+        "description": "1000ms counter - increments every second",
+        "expected_range": "0 to infinity"
+      },
+      {
+        "name": "last_tick_time",
+        "type": "uint32_t",
+        "scope": "main",
+        "description": "Last recorded HAL tick time",
+        "expected_range": "0 to infinity"
+      },
+      {
+        "name": "current_tick",
+        "type": "uint32_t",
+        "scope": "main",
+        "description": "Current HAL tick value",
+        "expected_range": "0 to infinity"
+      }
+    ],
+    "system": [
+      {
+        "name": "HAL_GetTick()",
+        "type": "function",
+        "description": "System uptime in milliseconds",
+        "expected_behavior": "Continuously incrementing"
+      }
+    ]
+  },
+  "memory_regions": {
+    "flash": {
+      "start": "0x08000000",
+      "end": "0x081FFFFF",
+      "size": "2MB",
+      "description": "Flash memory"
+    },
+    "sram": {
+      "start": "0x20000000",
+      "end": "0x2002FFFF",
+      "size": "192KB",
+      "description": "SRAM"
+    },
+    "ccm_ram": {
+      "start": "0x10000000",
+      "end": "0x1000FFFF",
+      "size": "64KB",
+      "description": "CCM RAM"
+    }
+  },
+  "debug_scenarios": {
+    "quick_check": {
+      "description": "Quick counter value check",
+      "commands": [
+        "target extended-remote localhost:4242",
+        "break main.c:112",
+        "continue",
+        "print counter_1000ms",
+        "print HAL_GetTick()"
+      ]
+    },
+    "health_check": {
+      "description": "System health verification",
+      "commands": [
+        "target extended-remote localhost:4242",
+        "interrupt",
+        "print HAL_GetTick()",
+        "bt",
+        "info registers"
+      ]
+    },
+    "counter_monitoring": {
+      "description": "Monitor counter increments",
+      "commands": [
+        "target extended-remote localhost:4242",
+        "break main.c:112",
+        "commands 1",
+        "print counter_1000ms",
+        "print HAL_GetTick()",
+        "continue",
+        "end",
+        "continue"
+      ]
+    },
+    "reset_and_reload": {
+      "description": "Reset system and reload program",
+      "commands": [
+        "target extended-remote localhost:4242",
+        "monitor reset halt",
+        "load",
+        "monitor reset halt"
+      ]
+    }
+  },
+  "expected_behavior": {
+    "counter_timing": {
+      "increment_interval": "1000ms",
+      "tolerance": "±10ms",
+      "description": "Counter should increment exactly every 1000ms"
+    },
+    "system_timing": {
+      "hal_tick_resolution": "1ms",
+      "description": "HAL_GetTick() should increment every millisecond"
+    }
+  },
+  "troubleshooting": {
+    "common_issues": [
+      {
+        "issue": "Connection refused",
+        "cause": "ST-Link server not running",
+        "solution": "Run ./start_stlink_server.sh"
+      },
+      {
+        "issue": "No symbol in current context",
+        "cause": "Not in correct function scope",
+        "solution": "Set breakpoint in main() function first"
+      },
+      {
+        "issue": "Counter always 0",
+        "cause": "Program not running or stuck",
+        "solution": "Check HAL_GetTick() and verify program execution"
+      },
+      {
+        "issue": "ST-Link not detected",
+        "cause": "Hardware connection issue",
+        "solution": "Check USB connection, run st-info --probe"
+      }
+    ]
+  },
+  "automation": {
+    "scripts": [
+      {
+        "name": "debug_automated.sh",
+        "description": "Automated debugging script with multiple functions",
+        "usage": "./debug_automated.sh [counter|monitor|health|reset|test]"
+      },
+      {
+        "name": "start_stlink_server.sh",
+        "description": "Start ST-Link GDB server",
+        "usage": "./start_stlink_server.sh"
+      }
+    ],
+    "mcp_commands": [
+      {
+        "function": "create_session_stm32-gdb",
+        "parameters": {
+          "program": "stm32-f429/Debug/stm32-f429.elf",
+          "gdb_path": "arm-none-eabi-gdb",
+          "command": "stm32-f429/.gdbinit"
+        }
+      },
+      {
+        "function": "set_breakpoint_stm32-gdb",
+        "parameters": {
+          "file": "Core/Src/main.c",
+          "line": 112
+        }
+      },
+      {
+        "function": "get_local_variables_stm32-gdb",
+        "description": "Get variables in current scope"
+      }
+    ]
+  }
+}

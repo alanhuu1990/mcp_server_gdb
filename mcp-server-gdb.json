@@ -1,0 +1,257 @@
+{
+  "mcpServers": {
+    "mcp-server-gdb": {
+      "name": "MCP Server GDB for STM32",
+      "description": "A GDB/MI protocol server optimized for STM32 microcontroller debugging, providing remote embedded debugging capabilities with AI assistants",
+      "version": "0.2.3",
+      "author": "Lix Zhou <xeontz@gmail.com>",
+      "repository": "https://github.com/pansila/mcp_server_gdb",
+      "license": "MIT",
+      "keywords": ["MCP", "tool", "AI", "LLM", "Agent", "GDB", "debugging", "STM32", "embedded", "ARM", "Cortex-M"],
+      "command": "./target/release/mcp-server-gdb",
+      "args": [
+        "--log-level",
+        "info"
+      ],
+      "transport": "stdio",
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "environment": {
+        "SERVER_IP": "127.0.0.1",
+        "SERVER_PORT": "8080",
+        "GDB_COMMAND_TIMEOUT": "30",
+        "RUST_LOG": "info"
+      },
+      "tools": [
+        {
+          "name": "create_session",
+          "description": "Create a new GDB debugging session with optional parameters, returns a session ID (UUID) if successful",
+          "category": "session_management"
+        },
+        {
+          "name": "get_session",
+          "description": "Get specific session information",
+          "category": "session_management"
+        },
+        {
+          "name": "get_all_sessions",
+          "description": "Get all sessions",
+          "category": "session_management"
+        },
+        {
+          "name": "close_session",
+          "description": "Close session",
+          "category": "session_management"
+        },
+        {
+          "name": "start_debugging",
+          "description": "Start debugging",
+          "category": "debug_control"
+        },
+        {
+          "name": "stop_debugging",
+          "description": "Stop debugging",
+          "category": "debug_control"
+        },
+        {
+          "name": "continue_execution",
+          "description": "Continue execution",
+          "category": "debug_control"
+        },
+        {
+          "name": "step_execution",
+          "description": "Step into next line",
+          "category": "debug_control"
+        },
+        {
+          "name": "next_execution",
+          "description": "Step over next line",
+          "category": "debug_control"
+        },
+        {
+          "name": "set_breakpoint",
+          "description": "Set a breakpoint in the code",
+          "category": "breakpoint_management"
+        },
+        {
+          "name": "delete_breakpoint",
+          "description": "Delete one or more breakpoints in the code",
+          "category": "breakpoint_management"
+        },
+        {
+          "name": "get_breakpoints",
+          "description": "Get all breakpoints",
+          "category": "breakpoint_management"
+        },
+        {
+          "name": "get_local_variables",
+          "description": "Get local variables in the current stack frame",
+          "category": "inspection"
+        },
+        {
+          "name": "get_registers",
+          "description": "Get ARM Cortex-M registers (R0-R15, PSR, MSP, PSP, etc.) in the current GDB session",
+          "category": "inspection"
+        },
+        {
+          "name": "get_register_names",
+          "description": "Get ARM Cortex-M register names in the current GDB session",
+          "category": "inspection"
+        },
+        {
+          "name": "get_stack_trace",
+          "description": "Get stack trace information",
+          "category": "inspection"
+        },
+        {
+          "name": "read_memory",
+          "description": "Read memory from STM32 (Flash, SRAM, peripheral registers)",
+          "category": "memory_management"
+        },
+        {
+          "name": "write_memory",
+          "description": "Write memory to STM32 (SRAM, peripheral registers)",
+          "category": "memory_management"
+        },
+        {
+          "name": "get_memory_mappings",
+          "description": "Get STM32 memory mappings (Flash, SRAM, peripherals)",
+          "category": "memory_management"
+        },
+        {
+          "name": "disassemble",
+          "description": "Disassemble ARM Thumb/Thumb-2 code at specified location",
+          "category": "code_analysis"
+        },
+        {
+          "name": "evaluate_expression",
+          "description": "Evaluate an expression in the current context",
+          "category": "code_analysis"
+        },
+        {
+          "name": "resolve_symbol",
+          "description": "Resolve symbol information",
+          "category": "code_analysis"
+        }
+      ],
+      "installation": {
+        "type": "binary",
+        "instructions": [
+          "Download pre-built binaries from the release page",
+          "Or build from source: cargo build --release"
+        ],
+        "requirements": [
+          "arm-none-eabi-gdb (GNU Arm Embedded Toolchain)",
+          "STM32 debug probe (ST-Link, J-Link, etc.)",
+          "OpenOCD or ST-Link GDB server",
+          "Rust toolchain (for building from source)"
+        ]
+      },
+      "usage": {
+        "examples": [
+          {
+            "title": "STM32 debugging session",
+            "description": "Create a session and debug STM32 firmware",
+            "steps": [
+              "create_session with .elf file path and gdb_path=arm-none-eabi-gdb",
+              "set_breakpoint at main() or specific function",
+              "start_debugging (connects to OpenOCD/ST-Link server)",
+              "continue_execution until breakpoint hit"
+            ]
+          },
+          {
+            "title": "STM32 peripheral inspection",
+            "description": "Inspect STM32 registers and memory",
+            "steps": [
+              "get_registers to check ARM Cortex-M registers",
+              "read_memory to examine peripheral registers (e.g., 0x40020000 for GPIOA)",
+              "read_memory to check Flash/SRAM contents",
+              "get_local_variables to see current variables"
+            ]
+          },
+          {
+            "title": "STM32 memory analysis",
+            "description": "Analyze STM32 memory layout and usage",
+            "steps": [
+              "get_memory_mappings to see Flash/SRAM layout",
+              "read_memory at 0x08000000 to check Flash contents",
+              "read_memory at 0x20000000 to check SRAM contents",
+              "disassemble to view ARM Thumb instructions"
+            ]
+          }
+        ]
+      },
+      "configuration": {
+        "server_ip": {
+          "description": "Server IP address for SSE transport",
+          "default": "127.0.0.1",
+          "env_var": "SERVER_IP"
+        },
+        "server_port": {
+          "description": "Server port for SSE transport",
+          "default": "8080",
+          "env_var": "SERVER_PORT"
+        },
+        "command_timeout": {
+          "description": "GDB command execution timeout in seconds",
+          "default": "30",
+          "env_var": "GDB_COMMAND_TIMEOUT"
+        }
+      },
+      "transports": {
+        "stdio": {
+          "description": "Standard input/output transport (default)",
+          "default": true
+        },
+        "sse": {
+          "description": "Server-Sent Events transport",
+          "args": ["--transport", "sse"],
+          "url": "http://127.0.0.1:8080"
+        }
+      },
+      "features": [
+        "STM32 firmware debugging with arm-none-eabi-gdb",
+        "ARM Cortex-M register inspection (R0-R15, PSR, MSP, PSP)",
+        "STM32 peripheral register access and manipulation",
+        "Flash and SRAM memory inspection",
+        "ARM Thumb/Thumb-2 code disassembly",
+        "Breakpoint management for embedded debugging",
+        "Real-time variable monitoring during execution",
+        "Support for OpenOCD and ST-Link debug probes",
+        "Multi-session debugging for multiple STM32 devices",
+        "Built-in TUI for embedded debugging workflow inspection"
+      ],
+      "stm32_specific": {
+        "supported_families": [
+          "STM32F0", "STM32F1", "STM32F2", "STM32F3", "STM32F4", "STM32F7",
+          "STM32L0", "STM32L1", "STM32L4", "STM32L5",
+          "STM32G0", "STM32G4",
+          "STM32H7",
+          "STM32WB", "STM32WL",
+          "STM32U5"
+        ],
+        "debug_probes": [
+          "ST-Link V2/V3",
+          "J-Link",
+          "OpenOCD compatible probes",
+          "Black Magic Probe"
+        ],
+        "memory_regions": {
+          "flash": "0x08000000 - varies by device",
+          "sram": "0x20000000 - varies by device",
+          "system_memory": "0x1FFF0000 - bootloader",
+          "option_bytes": "0x1FFF7800 - configuration",
+          "peripherals": "0x40000000 - 0x60000000"
+        },
+        "common_registers": {
+          "core": ["R0-R15", "PSR", "MSP", "PSP", "PRIMASK", "FAULTMASK", "BASEPRI", "CONTROL"],
+          "debug": ["DHCSR", "DCRSR", "DCRDR", "DEMCR"],
+          "systick": ["SYST_CSR", "SYST_RVR", "SYST_CVR", "SYST_CALIB"]
+        }
+      }
+    }
+  }
+}
