@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "stm32-gdb": {
+      "command": "D:/Custom-Power-Project/Tools/mcp-servers/mcp_server_gdb/target/release/mcp-server-gdb.exe",
+      "args": ["--log-level", "info"],
+      "cwd": "D:/Custom-Power-Project/Tools/mcp-servers/mcp_server_gdb",
+      "env": {
+        "SERVER_IP": "127.0.0.1",
+        "SERVER_PORT": "8080",
+        "GDB_COMMAND_TIMEOUT": "30",
+        "RUST_LOG": "info"
+      }
+    }
+  }
+} 
