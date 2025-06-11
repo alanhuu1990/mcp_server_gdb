@@ -14,8 +14,6 @@ class MCPBridge extends EventEmitter {
     this.eventSource = null;
     this.requestId = 1;
     this.pendingRequests = new Map();
-
-    this.setupMCPClient();
   }
 
   setupAxiosInterceptors() {

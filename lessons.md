@@ -306,3 +306,50 @@ handleCustomProtocolResponse(result, expectJson = false) {
 The main lesson is that complex protocol issues require collaborative solutions. Agent-1's dual-server Rust implementation combined with the updated Node.js client provides a robust workaround for the mcp-core v0.1 bug while maintaining full functionality and providing better performance than the original MCP protocol.
 
 **When Standard Protocols Fail**: Implement collaborative workarounds that leverage the strengths of different technology stacks. The combination of Agent-1's Rust server and the Node.js client integration demonstrates how effective teamwork can overcome critical library bugs and deliver production-ready solutions.
+
+## Quality Bug Fixes (v0.5.1)
+
+### 27. Process Termination Issues
+**Problem**: Test scripts hanging without proper exit codes, causing CI/CD pipeline issues.
+**Solution**: Added `process.exit(0)` on success and `process.exit(1)` on error.
+**Lesson**: Always ensure test scripts terminate properly with appropriate exit codes for automation compatibility.
+
+### 28. Dependency Management
+**Problem**: Unused `axios` dependency increasing bundle size and maintenance overhead.
+**Solution**: Removed unused dependency while keeping actively used `node-fetch`.
+**Lesson**: Regularly audit dependencies and remove unused packages to maintain clean codebases.
+
+### 29. Import Consistency
+**Problem**: Inconsistent EventSource import patterns causing potential runtime errors.
+**Solution**: Standardized to non-destructuring import: `const EventSource = require('eventsource')`.
+**Lesson**: Maintain consistent import patterns across the codebase to prevent confusion and errors.
+
+### 30. Missing Method Implementation
+**Problem**: Constructor calling undefined `setupMCPClient()` method causing immediate runtime failure.
+**Solution**: Removed the undefined method call from MCPBridge constructor.
+**Lesson**: Ensure all method calls in constructors reference implemented methods or handle gracefully.
+
+### 31. HTTP Status Code Validation
+**Problem**: Request handlers not checking HTTP status codes, masking server errors.
+**Solution**: Added status code validation to reject promises on non-2xx responses.
+**Lesson**: Always validate HTTP status codes to surface server-side failures immediately.
+
+### 32. Test Reliability
+**Problem**: Tests against long-lived SSE streams timing out and causing false failures.
+**Solution**: Replaced `/sse` endpoint tests with lightweight `/health` endpoint tests.
+**Lesson**: Use appropriate endpoints for testing - health checks for availability, not streaming endpoints.
+
+### 33. Parse Safety
+**Problem**: `parseInt()` without radix parameter causing incorrect parsing of values starting with "0".
+**Solution**: Added radix parameter `10` to all `parseInt()` calls for consistent decimal parsing.
+**Lesson**: Always specify radix parameter in `parseInt()` to prevent unexpected octal/hex parsing.
+
+### 34. Configuration Accuracy
+**Problem**: Default port configuration not matching documentation and other config files.
+**Solution**: Updated PowerShell script default port from 8080 to 8081.
+**Lesson**: Ensure all configuration defaults are consistent across documentation and implementation.
+
+### 35. Code Quality - DRY Principle
+**Problem**: Repeated response parsing logic violating DRY principles and increasing maintenance burden.
+**Solution**: Extracted parsing logic into reusable helper methods `parseToolResponse()` and `parseToolResponseAsText()`.
+**Lesson**: Identify and refactor repeated code patterns into reusable helper functions to improve maintainability.

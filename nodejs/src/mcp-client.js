@@ -418,15 +418,31 @@ class MCPClient extends EventEmitter {
     try {
       const result = await this.sendCustomToolRequest('get_session', { session_id: sessionId });
       // Handle both direct JSON response and text content response
-      if (typeof result === 'string') {
-        return JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return JSON.parse(result.content[0].text);
-      } else {
-        return result;
-      }
+      return this.parseToolResponse(result);
     } catch (error) {
       throw new Error(`Failed to get session: ${error.message}`);
+    }
+  }
+
+  // Helper method to parse tool response in different formats (for JSON responses)
+  parseToolResponse(result) {
+    if (typeof result === 'string') {
+      return JSON.parse(result);
+    } else if (result.content && result.content[0] && result.content[0].text) {
+      return JSON.parse(result.content[0].text);
+    } else {
+      return result;
+    }
+  }
+
+  // Helper method to parse tool response in different formats (for string/text responses)
+  parseToolResponseAsText(result) {
+    if (typeof result === 'string') {
+      return result;
+    } else if (result.content && result.content[0] && result.content[0].text) {
+      return result.content[0].text;
+    } else {
+      return JSON.stringify(result);
     }
   }
 
@@ -435,14 +451,7 @@ class MCPClient extends EventEmitter {
       const result = await this.sendCustomToolRequest('get_local_variables', { session_id: sessionId });
 
       // Handle different response formats
-      let variables;
-      if (typeof result === 'string') {
-        variables = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        variables = JSON.parse(result.content[0].text);
-      } else {
-        variables = result;
-      }
+      const variables = this.parseToolResponse(result);
 
       // Emit variable update event
       this.eventManager.emit('variable_changed', {
@@ -462,14 +471,7 @@ class MCPClient extends EventEmitter {
       const result = await this.sendCustomToolRequest('get_registers', { session_id: sessionId });
 
       // Handle different response formats
-      let registers;
-      if (typeof result === 'string') {
-        registers = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        registers = JSON.parse(result.content[0].text);
-      } else {
-        registers = result;
-      }
+      const registers = this.parseToolResponse(result);
 
       // Emit register update event
       this.eventManager.emit('register_changed', {
@@ -493,14 +495,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      let breakpoint;
-      if (typeof result === 'string') {
-        breakpoint = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        breakpoint = JSON.parse(result.content[0].text);
-      } else {
-        breakpoint = result;
-      }
+      const breakpoint = this.parseToolResponse(result);
 
       this.eventManager.emit('breakpoint_set', {
         sessionId,
@@ -524,13 +519,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to continue execution: ${error.message}`);
     }
@@ -546,13 +535,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to step execution: ${error.message}`);
     }
@@ -568,13 +551,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to stop execution: ${error.message}`);
     }
@@ -594,13 +571,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to close session: ${error.message}`);
     }
@@ -616,13 +587,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to start debugging: ${error.message}`);
     }
@@ -633,16 +598,7 @@ class MCPClient extends EventEmitter {
       const result = await this.sendCustomToolRequest('get_breakpoints', { session_id: sessionId });
 
       // Handle different response formats
-      let breakpoints;
-      if (typeof result === 'string') {
-        breakpoints = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        breakpoints = JSON.parse(result.content[0].text);
-      } else {
-        breakpoints = result;
-      }
-
-      return breakpoints;
+      return this.parseToolResponse(result);
     } catch (error) {
       throw new Error(`Failed to get breakpoints: ${error.message}`);
     }
@@ -662,13 +618,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to delete breakpoint: ${error.message}`);
     }
@@ -679,16 +629,7 @@ class MCPClient extends EventEmitter {
       const result = await this.sendCustomToolRequest('get_stack_frames', { session_id: sessionId });
 
       // Handle different response formats
-      let stackFrames;
-      if (typeof result === 'string') {
-        stackFrames = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        stackFrames = JSON.parse(result.content[0].text);
-      } else {
-        stackFrames = result;
-      }
-
-      return stackFrames;
+      return this.parseToolResponse(result);
     } catch (error) {
       throw new Error(`Failed to get stack frames: ${error.message}`);
     }
@@ -704,13 +645,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      if (typeof result === 'string') {
-        return result;
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        return result.content[0].text;
-      } else {
-        return JSON.stringify(result);
-      }
+      return this.parseToolResponseAsText(result);
     } catch (error) {
       throw new Error(`Failed to step over: ${error.message}`);
     }
@@ -721,16 +656,7 @@ class MCPClient extends EventEmitter {
       const result = await this.sendCustomToolRequest('get_register_names', { session_id: sessionId });
 
       // Handle different response formats
-      let registerNames;
-      if (typeof result === 'string') {
-        registerNames = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        registerNames = JSON.parse(result.content[0].text);
-      } else {
-        registerNames = result;
-      }
-
-      return registerNames;
+      return this.parseToolResponse(result);
     } catch (error) {
       throw new Error(`Failed to get register names: ${error.message}`);
     }
@@ -745,16 +671,7 @@ class MCPClient extends EventEmitter {
       });
 
       // Handle different response formats
-      let memoryData;
-      if (typeof result === 'string') {
-        memoryData = JSON.parse(result);
-      } else if (result.content && result.content[0] && result.content[0].text) {
-        memoryData = JSON.parse(result.content[0].text);
-      } else {
-        memoryData = result;
-      }
-
-      return memoryData;
+      return this.parseToolResponse(result);
     } catch (error) {
       throw new Error(`Failed to read memory: ${error.message}`);
     }

@@ -41,11 +41,17 @@ function makeRequest(url) {
   return new Promise((resolve, reject) => {
     const request = http.get(url, (response) => {
       let data = '';
-      
+
+      // Check HTTP status code
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+        return;
+      }
+
       response.on('data', (chunk) => {
         data += chunk;
       });
-      
+
       response.on('end', () => {
         try {
           const jsonData = JSON.parse(data);

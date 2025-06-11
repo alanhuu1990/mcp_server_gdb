@@ -67,8 +67,9 @@ class Agent1IntegrationTester {
 
   async testMCPServer() {
     try {
-      const response = await this.makeRequest(`http://localhost:${this.mcpPort}/sse`, { timeout: 3000 });
-      console.log('✅ MCP Server (SSE) is running on port 8081');
+      const response = await this.makeRequest(`http://localhost:${this.mcpPort}/health`, { timeout: 3000 });
+      console.log('✅ MCP Server is running on port 8081');
+      console.log('📊 Health response:', response);
       this.testResults.mcpServer = true;
     } catch (error) {
       console.error('❌ MCP Server test failed:', error.message);

@@ -2,7 +2,7 @@
 # This script starts both the Rust MCP server and Node.js bridge
 
 param(
-    [int]$RustServerPort = 8080,
+    [int]$RustServerPort = 8081,
     [int]$NodejsPort = 3000,
     [int]$WebSocketPort = 3001
 )

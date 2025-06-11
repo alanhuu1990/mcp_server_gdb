@@ -9,8 +9,10 @@ try {
   
   server.start().then(() => {
     console.log('Server started successfully');
+    process.exit(0);
   }).catch(error => {
     console.error('Server start failed:', error);
+    process.exit(1);
   });
   
 } catch (error) {

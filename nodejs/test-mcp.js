@@ -1,4 +1,4 @@
-const { EventSource } = require('eventsource');
+const EventSource = require('eventsource');
 const fetch = require('node-fetch');
 
 async function testMCPConnection() {

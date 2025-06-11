@@ -214,7 +214,7 @@ class MCPGDBNodeServer {
         if (!address || !size) {
           return res.status(400).json({ error: 'address and size parameters are required' });
         }
-        const memoryData = await this.mcpClient.readMemory(req.params.id, address, parseInt(size));
+        const memoryData = await this.mcpClient.readMemory(req.params.id, address, parseInt(size, 10));
         res.json(memoryData);
       } catch (error) {
         res.status(500).json({ error: error.message });
