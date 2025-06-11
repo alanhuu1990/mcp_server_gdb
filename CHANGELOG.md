@@ -5,6 +5,30 @@ All notable changes to the MCP Server GDB for STM32 project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2024-12-11
+
+### Fixed
+- **Process Termination**: Added proper exit codes to test scripts for CI/CD compatibility
+- **Dependency Cleanup**: Removed unused axios dependency to reduce bundle size
+- **Import Consistency**: Fixed EventSource import to match codebase patterns
+- **Method Implementation**: Removed undefined setupMCPClient() call causing runtime errors
+- **HTTP Status Checking**: Added proper status code validation in request handlers
+- **Test Reliability**: Replaced timeout-prone /sse endpoint tests with health checks
+- **Parse Safety**: Added radix parameter to parseInt calls to prevent parsing errors
+- **Configuration Accuracy**: Updated default ports to match documentation
+- **Code Quality**: Refactored repeated response parsing logic into reusable helper methods
+
+### Changed
+- Updated `nodejs/test-server.js` with proper process termination
+- Updated `nodejs/package.json` to remove unused dependencies
+- Updated `nodejs/test-mcp.js` with consistent EventSource import
+- Updated `nodejs/src/mcp-bridge.js` to remove undefined method call
+- Updated `nodejs/test-server-startup.js` with HTTP status checking
+- Updated `nodejs/test-agent1-integration.js` with reliable health check tests
+- Updated `nodejs/src/server.js` with safe parseInt usage
+- Updated `scripts/start-with-nodejs.ps1` with correct default port
+- Updated `nodejs/src/mcp-client.js` with DRY response parsing helpers
+
 ## [0.5.0] - 2025-06-11
 
 > **🎉 COMPLETE INTEGRATION**: Agent-1's Custom Protocol + Node.js Client Integration! Full end-to-end solution bypassing mcp-core v0.1 bug.
