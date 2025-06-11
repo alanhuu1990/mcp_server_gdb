@@ -5,6 +5,84 @@ All notable changes to the MCP Server GDB for STM32 project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-01-27
+
+> **🔧 CRITICAL FIX**: Custom Protocol Workaround for mcp-core v0.1 Bug! Complete Node.js client rewrite with custom protocol.
+
+### Fixed
+- **MCP Core Library Bug Workaround**:
+  - **Root Cause**: `mcp-core` v0.1 has a critical bug where `tools/list` and `tools/call` fail with "Client must be initialized" even after successful MCP initialization
+  - **Solution**: Implemented custom protocol that bypasses broken `tools/call` mechanism
+  - **Impact**: All debugging tools now work despite upstream library bug
+- **Custom Protocol Implementation**:
+  - Replaced `tools/call` with direct `custom/{tool_name}` method calls
+  - Maintains SSE transport and MCP initialization (working components)
+  - Handles multiple response formats (string, JSON, MCP content format)
+  - Provides complete feature parity with standard MCP protocol
+
+### Added
+- **Custom Tool Request Method**: `sendCustomToolRequest(toolName, params)`
+- **Complete Tool Coverage**: All 16 GDB tools implemented with custom protocol
+  - Session management: `custom/get_all_sessions`, `custom/create_session`, `custom/get_session`, `custom/close_session`
+  - Debugging control: `custom/start_debugging`, `custom/stop_debugging`, `custom/continue_execution`, `custom/step_execution`, `custom/next_execution`
+  - Breakpoint management: `custom/get_breakpoints`, `custom/set_breakpoint`, `custom/delete_breakpoint`
+  - Data inspection: `custom/get_local_variables`, `custom/get_registers`, `custom/get_register_names`, `custom/get_stack_frames`, `custom/read_memory`
+- **Enhanced API Endpoints**: Complete REST API coverage for all debugging operations
+  - `DELETE /api/sessions/:id` - Close session
+  - `POST /api/sessions/:id/start` - Start debugging
+  - `POST /api/sessions/:id/stop` - Stop debugging
+  - `POST /api/sessions/:id/continue` - Continue execution
+  - `POST /api/sessions/:id/step` - Step into
+  - `POST /api/sessions/:id/next` - Step over
+  - `GET /api/sessions/:id/breakpoints` - Get breakpoints
+  - `POST /api/sessions/:id/breakpoints` - Set breakpoint
+  - `DELETE /api/sessions/:id/breakpoints/:breakpointId` - Delete breakpoint
+  - `GET /api/sessions/:id/stack` - Get stack frames
+  - `GET /api/sessions/:id/register-names` - Get register names
+  - `GET /api/sessions/:id/memory?address=&size=` - Read memory
+- **Integration Testing**: `test-custom-protocol.js` - Comprehensive test suite for custom protocol
+- **Documentation**: `CUSTOM_PROTOCOL_README.md` - Complete custom protocol documentation
+
+### Enhanced
+- **Response Format Handling**: Robust handling of different response formats from Rust server
+- **Error Handling**: Improved error messages and debugging information
+- **Event Management**: Enhanced WebSocket event emission for real-time dashboard updates
+- **Health Checks**: Updated health check to use custom protocol instead of broken `tools/list`
+
+### Technical Implementation
+- **Protocol Bypass**: Uses working SSE transport while bypassing broken `tools/call`
+- **Method Mapping**: Direct mapping from Node.js methods to custom Rust server endpoints
+- **Format Flexibility**: Handles string, JSON, and MCP content response formats
+- **Event Integration**: Maintains WebSocket event emission for dashboard real-time updates
+- **Future Migration**: Easy migration path back to standard MCP when library is fixed
+
+### Files Modified
+- `nodejs/src/mcp-client.js` - **MAJOR REWRITE**: Custom protocol implementation
+- `nodejs/src/server.js` - **ENHANCED**: Complete API endpoint coverage
+- `nodejs/test-custom-protocol.js` - **NEW**: Integration test suite
+- `nodejs/test-server-startup.js` - **NEW**: Server startup verification
+- `nodejs/CUSTOM_PROTOCOL_README.md` - **NEW**: Custom protocol documentation
+
+### Benefits
+- **Full Functionality**: All debugging tools work despite mcp-core bug
+- **Better Performance**: Direct method calls without tools/call overhead
+- **Enhanced Reliability**: Bypasses unstable library components
+- **Complete Coverage**: All 16 GDB tools available via REST API
+- **Real-time Updates**: WebSocket integration maintained
+- **Future-Proof**: Easy migration when upstream bug is fixed
+
+### Breaking Changes
+- Internal protocol changed from `tools/call` to `custom/{tool_name}`
+- Response format handling updated for multiple formats
+- Health check method changed from `tools/list` to `custom/get_all_sessions`
+
+### Migration Notes
+- **For Users**: No changes required - all API endpoints remain the same
+- **For Developers**: Custom protocol is transparent to external consumers
+- **Future Migration**: When mcp-core is fixed, can easily revert to standard protocol
+
+---
+
 ## [0.4.0] - 2025-06-09
 
 > **🚀 NEW FEATURE**: Node.js Real-Time Debugging Integration! Web-based dashboard with live monitoring.

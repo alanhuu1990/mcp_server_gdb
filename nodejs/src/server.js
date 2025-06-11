@@ -108,6 +108,119 @@ class MCPGDBNodeServer {
       }
     });
 
+    // Additional API endpoints for complete GDB functionality
+    this.app.delete('/api/sessions/:id', async (req, res) => {
+      try {
+        const result = await this.mcpClient.closeSession(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/start', async (req, res) => {
+      try {
+        const result = await this.mcpClient.startDebugging(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/stop', async (req, res) => {
+      try {
+        const result = await this.mcpClient.stopExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/continue', async (req, res) => {
+      try {
+        const result = await this.mcpClient.continueExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/step', async (req, res) => {
+      try {
+        const result = await this.mcpClient.stepExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/next', async (req, res) => {
+      try {
+        const result = await this.mcpClient.nextExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/breakpoints', async (req, res) => {
+      try {
+        const breakpoints = await this.mcpClient.getBreakpoints(req.params.id);
+        res.json(breakpoints);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/breakpoints', async (req, res) => {
+      try {
+        const breakpoint = await this.mcpClient.setBreakpoint(req.params.id, req.body);
+        res.json(breakpoint);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.delete('/api/sessions/:id/breakpoints/:breakpointId', async (req, res) => {
+      try {
+        const result = await this.mcpClient.deleteBreakpoint(req.params.id, req.params.breakpointId);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/stack', async (req, res) => {
+      try {
+        const stackFrames = await this.mcpClient.getStackFrames(req.params.id);
+        res.json(stackFrames);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/register-names', async (req, res) => {
+      try {
+        const registerNames = await this.mcpClient.getRegisterNames(req.params.id);
+        res.json(registerNames);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/memory', async (req, res) => {
+      try {
+        const { address, size } = req.query;
+        if (!address || !size) {
+          return res.status(400).json({ error: 'address and size parameters are required' });
+        }
+        const memoryData = await this.mcpClient.readMemory(req.params.id, address, parseInt(size));
+        res.json(memoryData);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
     // Dashboard route
     this.app.get('/', (req, res) => {
       res.sendFile(path.join(__dirname, '../public/index.html'));
@@ -130,9 +243,15 @@ class MCPGDBNodeServer {
       // Initialize Event Manager
       this.eventManager = new EventManager();
 
-      // Initialize MCP Client
+      // Initialize MCP Client (but don't fail if connection fails)
       this.mcpClient = new MCPClient(this.config.mcp, this.eventManager);
-      await this.mcpClient.connect();
+      try {
+        await this.mcpClient.connect();
+        console.log('MCP Client connected successfully');
+      } catch (error) {
+        console.warn('MCP Client connection failed (will retry automatically):', error.message);
+        // Don't exit - let the client handle reconnection
+      }
 
       // Initialize WebSocket Server
       this.wsServer = new WebSocketServer(this.server, this.config.websocket, this.eventManager);
@@ -167,8 +286,8 @@ class MCPGDBNodeServer {
       await this.wsServer.stop();
     }
     
-    if (this.mcpBridge) {
-      await this.mcpBridge.disconnect();
+    if (this.mcpClient) {
+      await this.mcpClient.disconnect();
     }
     
     this.server.close(() => {

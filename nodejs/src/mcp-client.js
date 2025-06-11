@@ -8,6 +8,7 @@ class MCPClient extends EventEmitter {
     this.config = config;
     this.eventManager = eventManager;
     this.baseUrl = `${config.rust_server.protocol}://${config.rust_server.host}:${config.rust_server.port}`;
+    this.customProtocolUrl = `${config.rust_server.protocol}://${config.rust_server.host}:${config.rust_server.port + 1}`;
     this.connected = false;
     this.reconnectTimer = null;
     this.reconnectAttempts = 0;
@@ -19,6 +20,7 @@ class MCPClient extends EventEmitter {
     this.sessionId = null;
 
     console.log('MCP Client initialized for:', this.baseUrl);
+    console.log('Custom Protocol URL:', this.customProtocolUrl);
   }
 
   async sendMCPRequest(method, params = {}) {
@@ -277,7 +279,11 @@ class MCPClient extends EventEmitter {
       this.reconnectTimer = null;
     }
     if (this.eventSource) {
-      this.eventSource.close();
+      try {
+        this.eventSource.close();
+      } catch (error) {
+        // Ignore errors during close
+      }
       this.eventSource = null;
     }
     console.log('Disconnected from MCP server');
@@ -315,7 +321,11 @@ class MCPClient extends EventEmitter {
     setInterval(async () => {
       if (this.connected) {
         try {
-          await this.sendMCPRequest('tools/list');
+          // Test Agent-1's custom protocol health endpoint
+          const response = await fetch(`${this.customProtocolUrl}/health`);
+          if (!response.ok) {
+            throw new Error(`Health check failed: ${response.status}`);
+          }
         } catch (error) {
           console.error('Health check failed:', error.message);
           this.handleConnectionError();
@@ -324,14 +334,61 @@ class MCPClient extends EventEmitter {
     }, 30000); // Check every 30 seconds
   }
 
-  // MCP Tool Methods
+  // Custom Protocol Tool Methods (Workaround for mcp-core v0.1 bug)
+  // Instead of using tools/call, we use Agent-1's HTTP REST API
+
+  // Helper function to handle Agent-1's response format
+  handleCustomProtocolResponse(result, expectJson = false) {
+    if (result && result.message) {
+      if (expectJson) {
+        try {
+          return JSON.parse(result.message);
+        } catch (parseError) {
+          // If not JSON, return as text wrapped in object
+          return { data: result.message };
+        }
+      }
+      return result.message;
+    }
+    return result;
+  }
+
+  async sendCustomToolRequest(toolName, params = {}) {
+    try {
+      console.log(`🔧 Custom Tool Request: ${toolName}`, params);
+
+      // Use Agent-1's HTTP REST API on port 8082
+      const response = await fetch(`${this.customProtocolUrl}/api/tools/${toolName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ params: params })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`✅ Custom Tool Response: ${toolName}`, result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Tool execution failed');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error(`❌ Custom Tool Error: ${toolName}`, error.message);
+      throw new Error(`Failed to call ${toolName}: ${error.message}`);
+    }
+  }
+
   async getSessions() {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'get_all_sessions',
-        arguments: {}
-      });
-      return JSON.parse(result.content[0].text);
+      const result = await this.sendCustomToolRequest('get_all_sessions', {});
+      const sessions = this.handleCustomProtocolResponse(result, true);
+      return sessions || { sessions: [] };
     } catch (error) {
       throw new Error(`Failed to get sessions: ${error.message}`);
     }
@@ -339,21 +396,18 @@ class MCPClient extends EventEmitter {
 
   async createSession(sessionData) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'create_session',
-        arguments: sessionData
-      });
-      
-      const sessionText = result.content[0].text;
+      const result = await this.sendCustomToolRequest('create_session', sessionData);
+      const sessionText = this.handleCustomProtocolResponse(result);
+
       const sessionId = sessionText.match(/Created GDB session: (.+)/)?.[1];
-      
+
       if (sessionId) {
         const session = { id: sessionId, ...sessionData };
         this.sessions.set(sessionId, session);
         this.eventManager.emit('session_created', session);
         return session;
       }
-      
+
       throw new Error('Failed to extract session ID from response');
     } catch (error) {
       throw new Error(`Failed to create session: ${error.message}`);
@@ -362,11 +416,15 @@ class MCPClient extends EventEmitter {
 
   async getSession(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'get_session',
-        arguments: { session_id: sessionId }
-      });
-      return JSON.parse(result.content[0].text);
+      const result = await this.sendCustomToolRequest('get_session', { session_id: sessionId });
+      // Handle both direct JSON response and text content response
+      if (typeof result === 'string') {
+        return JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return JSON.parse(result.content[0].text);
+      } else {
+        return result;
+      }
     } catch (error) {
       throw new Error(`Failed to get session: ${error.message}`);
     }
@@ -374,20 +432,25 @@ class MCPClient extends EventEmitter {
 
   async getVariables(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'get_local_variables',
-        arguments: { session_id: sessionId }
-      });
-      
-      const variables = JSON.parse(result.content[0].text);
-      
+      const result = await this.sendCustomToolRequest('get_local_variables', { session_id: sessionId });
+
+      // Handle different response formats
+      let variables;
+      if (typeof result === 'string') {
+        variables = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        variables = JSON.parse(result.content[0].text);
+      } else {
+        variables = result;
+      }
+
       // Emit variable update event
       this.eventManager.emit('variable_changed', {
         sessionId,
         variables,
         timestamp: new Date().toISOString()
       });
-      
+
       return variables;
     } catch (error) {
       throw new Error(`Failed to get variables: ${error.message}`);
@@ -396,20 +459,25 @@ class MCPClient extends EventEmitter {
 
   async getRegisters(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'get_registers',
-        arguments: { session_id: sessionId }
-      });
-      
-      const registers = JSON.parse(result.content[0].text);
-      
+      const result = await this.sendCustomToolRequest('get_registers', { session_id: sessionId });
+
+      // Handle different response formats
+      let registers;
+      if (typeof result === 'string') {
+        registers = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        registers = JSON.parse(result.content[0].text);
+      } else {
+        registers = result;
+      }
+
       // Emit register update event
       this.eventManager.emit('register_changed', {
         sessionId,
         registers,
         timestamp: new Date().toISOString()
       });
-      
+
       return registers;
     } catch (error) {
       throw new Error(`Failed to get registers: ${error.message}`);
@@ -418,23 +486,28 @@ class MCPClient extends EventEmitter {
 
   async setBreakpoint(sessionId, breakpointData) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'set_breakpoint',
-        arguments: {
-          session_id: sessionId,
-          file: breakpointData.file,
-          line: breakpointData.line
-        }
+      const result = await this.sendCustomToolRequest('set_breakpoint', {
+        session_id: sessionId,
+        file: breakpointData.file,
+        line: breakpointData.line
       });
-      
-      const breakpoint = JSON.parse(result.content[0].text);
-      
+
+      // Handle different response formats
+      let breakpoint;
+      if (typeof result === 'string') {
+        breakpoint = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        breakpoint = JSON.parse(result.content[0].text);
+      } else {
+        breakpoint = result;
+      }
+
       this.eventManager.emit('breakpoint_set', {
         sessionId,
         breakpoint,
         timestamp: new Date().toISOString()
       });
-      
+
       return breakpoint;
     } catch (error) {
       throw new Error(`Failed to set breakpoint: ${error.message}`);
@@ -443,17 +516,21 @@ class MCPClient extends EventEmitter {
 
   async continueExecution(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'continue_execution',
-        arguments: { session_id: sessionId }
-      });
-      
+      const result = await this.sendCustomToolRequest('continue_execution', { session_id: sessionId });
+
       this.eventManager.emit('execution_continued', {
         sessionId,
         timestamp: new Date().toISOString()
       });
-      
-      return result.content[0].text;
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
     } catch (error) {
       throw new Error(`Failed to continue execution: ${error.message}`);
     }
@@ -461,17 +538,21 @@ class MCPClient extends EventEmitter {
 
   async stepExecution(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'step_execution',
-        arguments: { session_id: sessionId }
-      });
-      
+      const result = await this.sendCustomToolRequest('step_execution', { session_id: sessionId });
+
       this.eventManager.emit('execution_stepped', {
         sessionId,
         timestamp: new Date().toISOString()
       });
-      
-      return result.content[0].text;
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
     } catch (error) {
       throw new Error(`Failed to step execution: ${error.message}`);
     }
@@ -479,19 +560,203 @@ class MCPClient extends EventEmitter {
 
   async stopExecution(sessionId) {
     try {
-      const result = await this.sendMCPRequest('tools/call', {
-        name: 'stop_debugging',
-        arguments: { session_id: sessionId }
-      });
-      
+      const result = await this.sendCustomToolRequest('stop_debugging', { session_id: sessionId });
+
       this.eventManager.emit('execution_stopped', {
         sessionId,
         timestamp: new Date().toISOString()
       });
-      
-      return result.content[0].text;
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
     } catch (error) {
       throw new Error(`Failed to stop execution: ${error.message}`);
+    }
+  }
+
+  // Additional tool methods for complete GDB functionality
+  async closeSession(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('close_session', { session_id: sessionId });
+
+      // Remove from local sessions map
+      this.sessions.delete(sessionId);
+
+      this.eventManager.emit('session_closed', {
+        sessionId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
+    } catch (error) {
+      throw new Error(`Failed to close session: ${error.message}`);
+    }
+  }
+
+  async startDebugging(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('start_debugging', { session_id: sessionId });
+
+      this.eventManager.emit('debugging_started', {
+        sessionId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
+    } catch (error) {
+      throw new Error(`Failed to start debugging: ${error.message}`);
+    }
+  }
+
+  async getBreakpoints(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('get_breakpoints', { session_id: sessionId });
+
+      // Handle different response formats
+      let breakpoints;
+      if (typeof result === 'string') {
+        breakpoints = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        breakpoints = JSON.parse(result.content[0].text);
+      } else {
+        breakpoints = result;
+      }
+
+      return breakpoints;
+    } catch (error) {
+      throw new Error(`Failed to get breakpoints: ${error.message}`);
+    }
+  }
+
+  async deleteBreakpoint(sessionId, breakpointId) {
+    try {
+      const result = await this.sendCustomToolRequest('delete_breakpoint', {
+        session_id: sessionId,
+        breakpoint_id: breakpointId
+      });
+
+      this.eventManager.emit('breakpoint_deleted', {
+        sessionId,
+        breakpointId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
+    } catch (error) {
+      throw new Error(`Failed to delete breakpoint: ${error.message}`);
+    }
+  }
+
+  async getStackFrames(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('get_stack_frames', { session_id: sessionId });
+
+      // Handle different response formats
+      let stackFrames;
+      if (typeof result === 'string') {
+        stackFrames = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        stackFrames = JSON.parse(result.content[0].text);
+      } else {
+        stackFrames = result;
+      }
+
+      return stackFrames;
+    } catch (error) {
+      throw new Error(`Failed to get stack frames: ${error.message}`);
+    }
+  }
+
+  async nextExecution(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('next_execution', { session_id: sessionId });
+
+      this.eventManager.emit('execution_next', {
+        sessionId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle different response formats
+      if (typeof result === 'string') {
+        return result;
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      } else {
+        return JSON.stringify(result);
+      }
+    } catch (error) {
+      throw new Error(`Failed to step over: ${error.message}`);
+    }
+  }
+
+  async getRegisterNames(sessionId) {
+    try {
+      const result = await this.sendCustomToolRequest('get_register_names', { session_id: sessionId });
+
+      // Handle different response formats
+      let registerNames;
+      if (typeof result === 'string') {
+        registerNames = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        registerNames = JSON.parse(result.content[0].text);
+      } else {
+        registerNames = result;
+      }
+
+      return registerNames;
+    } catch (error) {
+      throw new Error(`Failed to get register names: ${error.message}`);
+    }
+  }
+
+  async readMemory(sessionId, address, size) {
+    try {
+      const result = await this.sendCustomToolRequest('read_memory', {
+        session_id: sessionId,
+        address: address,
+        size: size
+      });
+
+      // Handle different response formats
+      let memoryData;
+      if (typeof result === 'string') {
+        memoryData = JSON.parse(result);
+      } else if (result.content && result.content[0] && result.content[0].text) {
+        memoryData = JSON.parse(result.content[0].text);
+      } else {
+        memoryData = result;
+      }
+
+      return memoryData;
+    } catch (error) {
+      throw new Error(`Failed to read memory: ${error.message}`);
     }
   }
 

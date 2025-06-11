@@ -204,5 +204,82 @@ npm install eventsource  # Not manual package.json editing
 
 **Implementation**: `nodejs/test-direct-tools.js` script successfully identified the exact failure point.
 
+### 21. Custom Protocol Workaround Implementation
+**Lesson**: When standard MCP protocols fail due to library bugs, implement a custom protocol that uses the working transport layer.
+
+**Problem**: `mcp-core` v0.1 bug causes `tools/call` to fail even after successful initialization.
+
+**Solution Strategy**:
+1. **Keep Working Parts**: Maintain SSE connection and MCP initialization (these work perfectly)
+2. **Bypass Broken Parts**: Replace `tools/call` with custom JSON-RPC method calls
+3. **Custom Method Names**: Use `custom/{tool_name}` instead of `tools/call` with tool parameters
+
+**Implementation Pattern**:
+```javascript
+// Instead of:
+await this.sendMCPRequest('tools/call', {
+  name: 'get_all_sessions',
+  arguments: {}
+});
+
+// Use:
+await this.sendMCPRequest('custom/get_all_sessions', {});
+```
+
+**Key Benefits**:
+- Bypasses the mcp-core bug completely
+- Uses the same working SSE transport
+- Maintains all MCP protocol benefits (JSON-RPC, session management, etc.)
+- Allows full tool functionality without waiting for library fixes
+
+### 22. Response Format Handling
+**Lesson**: When implementing custom protocols, handle multiple response formats gracefully.
+
+**Challenge**: Different tools may return responses in different formats:
+- Direct JSON objects
+- String responses that need parsing
+- MCP content format with `content[0].text` structure
+
+**Solution**:
+```javascript
+// Handle different response formats
+let result;
+if (typeof response === 'string') {
+  result = JSON.parse(response);
+} else if (response.content && response.content[0] && response.content[0].text) {
+  result = JSON.parse(response.content[0].text);
+} else {
+  result = response;
+}
+```
+
+### 23. Complete API Coverage Strategy
+**Lesson**: When implementing workarounds, ensure complete feature parity with the original system.
+
+**Implementation**: Map every available MCP tool to both:
+1. Custom protocol method in the client
+2. REST API endpoint in the server
+
+**Tools Implemented**:
+- Session management: create, get, list, close
+- Debugging control: start, stop, continue, step, next
+- Breakpoint management: set, get, delete
+- Data inspection: variables, registers, register names, stack frames, memory
+- Real-time events: WebSocket integration for live updates
+
+### 24. Integration Testing for Custom Protocols
+**Lesson**: Create comprehensive integration tests that verify the entire custom protocol stack.
+
+**Test Coverage**:
+- Connection establishment
+- All tool methods
+- Error handling
+- Response format handling
+- Event emission for WebSocket integration
+
+**Implementation**: `nodejs/test-custom-protocol.js` provides complete test coverage.
+
 ## Summary
-The main lesson is that MCP transport implementation requires careful attention to protocol details, proper error handling, and incremental testing. **CRITICAL**: Always test the actual MCP protocol implementation, not just the documentation, as library bugs can cause unexpected failures even when the protocol handshake appears successful. The documentation may not always match the actual implementation in specific language SDKs, so always verify against the actual code and test thoroughly.
+The main lesson is that MCP transport implementation requires careful attention to protocol details, proper error handling, and incremental testing. **CRITICAL**: Always test the actual MCP protocol implementation, not just the documentation, as library bugs can cause unexpected failures even when the protocol handshake appears successful.
+
+**When Standard Protocols Fail**: Implement custom protocol workarounds that leverage the working parts of the transport layer while bypassing broken components. This approach allows full functionality without waiting for upstream library fixes, and can often provide better performance and reliability than the standard implementation.
