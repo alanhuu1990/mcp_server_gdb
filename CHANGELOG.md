@@ -5,6 +5,69 @@ All notable changes to the MCP Server GDB for STM32 project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-06-09
+
+> **🚀 NEW FEATURE**: Node.js Real-Time Debugging Integration! Web-based dashboard with live monitoring.
+
+### Added
+- **Node.js Integration**: Complete Node.js bridge for real-time debugging capabilities
+- **Real-Time Web Dashboard**: Interactive web interface for debugging sessions
+  - Live variable monitoring with automatic updates
+  - Real-time ARM Cortex-M register visualization
+  - Interactive breakpoint management
+  - Debug execution controls (continue, step, stop)
+  - Live log streaming with filtering
+  - Session management interface
+- **WebSocket Server**: Real-time communication between web dashboard and debugging sessions
+- **MCP Bridge**: Node.js bridge to interface with Rust MCP server
+- **Event Management System**: Comprehensive event handling for debugging state changes
+- **Startup Script**: `scripts/start-with-nodejs.sh` for easy deployment
+- **Web Technologies Stack**:
+  - Express.js HTTP server
+  - Socket.IO WebSocket implementation
+  - Modern responsive web interface
+  - Real-time data streaming
+- **Configuration System**: Flexible configuration for Node.js components
+- **Auto-refresh Capabilities**: Configurable real-time data updates
+- **Keyboard Shortcuts**: Hotkeys for common debugging operations
+
+### Enhanced
+- **README.md**: Added comprehensive Node.js integration documentation
+- **Project Structure**: Added `nodejs/` directory with complete Node.js application
+- **Dependencies**: Added Node.js package management with npm
+- **Documentation**: Updated setup and usage instructions for dual-server architecture
+
+### Technical Implementation
+- **Architecture**: Hybrid Rust + Node.js architecture
+  - Rust MCP server: Core GDB/MI protocol handling
+  - Node.js bridge: Real-time web interface and WebSocket communication
+- **Communication**: HTTP API and WebSocket protocols for real-time updates
+- **Frontend**: Modern HTML5/CSS3/JavaScript dashboard
+- **Backend**: Express.js server with Socket.IO integration
+- **Data Flow**: Rust ↔ Node.js ↔ WebSocket ↔ Web Dashboard
+
+### Files Added
+- `nodejs/package.json` - Node.js project configuration
+- `nodejs/src/server.js` - Main Node.js server
+- `nodejs/src/websocket-server.js` - WebSocket handling
+- `nodejs/src/mcp-bridge.js` - Rust MCP server interface
+- `nodejs/src/event-manager.js` - Event management system
+- `nodejs/public/index.html` - Web dashboard interface
+- `nodejs/public/css/dashboard.css` - Dashboard styling
+- `nodejs/public/js/dashboard.js` - Dashboard JavaScript
+- `nodejs/config/default.json` - Node.js configuration
+- `scripts/start-with-nodejs.sh` - Integrated startup script
+
+### Benefits
+- **Enhanced User Experience**: Visual debugging interface with real-time updates
+- **Improved Productivity**: Faster debugging cycles with live monitoring
+- **Better Visualization**: Graphical representation of debugging data
+- **Modern Interface**: Web-based dashboard accessible from any browser
+- **Real-Time Feedback**: Instant updates without manual refresh
+- **Multi-Session Support**: Manage multiple debugging sessions simultaneously
+
+---
+
 ## [0.3.0] - 2025-06-08
 
 > **🎯 STATUS**: Ready for Augment AI import! All JSON Schema validation issues resolved.

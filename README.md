@@ -14,6 +14,9 @@ A GDB/MI protocol server based on the MCP protocol, optimized for STM32 microcon
 - **Embedded Breakpoint Management**: Optimized for firmware debugging workflows
 - **Multi-Session Support**: Debug multiple STM32 devices simultaneously
 - **Built-in TUI**: Inspect embedded debugging workflows and improve AI prompts
+- **Real-Time Web Dashboard**: Node.js-powered web interface for live debugging
+- **WebSocket Integration**: Real-time variable and register monitoring
+- **Interactive Debugging**: Web-based controls for breakpoints and execution
 
 ## Installation
 
@@ -35,6 +38,45 @@ cargo run
 2. The server supports two transport modes:
    - Stdio (default): Standard input/output transport
    - SSE: Server-Sent Events transport, default at `http://127.0.0.1:8080`
+
+### Real-Time Debugging with Node.js Dashboard
+
+For enhanced debugging experience with real-time web interface:
+
+1. **Quick Start with Node.js Integration:**
+   ```bash
+   # Start both Rust server and Node.js dashboard
+   ./scripts/start-with-nodejs.sh
+   ```
+
+2. **Manual Setup:**
+   ```bash
+   # Install Node.js dependencies
+   cd nodejs
+   npm install
+
+   # Start Rust MCP server (in one terminal)
+   ./target/release/mcp-server-gdb --transport sse
+
+   # Start Node.js bridge (in another terminal)
+   cd nodejs
+   npm start
+   ```
+
+3. **Access the Dashboard:**
+   - Open your browser to `http://localhost:3000`
+   - Real-time debugging interface with live variable monitoring
+   - WebSocket-powered updates for immediate feedback
+   - Interactive controls for breakpoints and execution
+
+#### Node.js Dashboard Features:
+- **Live Variable Monitoring**: Real-time updates of variable values during debugging
+- **Register Visualization**: Live ARM Cortex-M register display
+- **Interactive Breakpoints**: Set/remove breakpoints through web interface
+- **Debug Controls**: Continue, step, stop execution via web buttons
+- **Real-time Logs**: Live streaming of debug messages and events
+- **Session Management**: Create and manage multiple debugging sessions
+- **WebSocket Communication**: Instant updates without page refresh
 
 ### Integration with Augment AI
 
