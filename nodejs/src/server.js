@@ -9,7 +9,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const WebSocketServer = require('./websocket-server');
-const MCPBridge = require('./mcp-bridge');
+const MCPClient = require('./mcp-client');
 const EventManager = require('./event-manager');
 const config = require('../config/default.json');
 
@@ -18,7 +18,7 @@ class MCPGDBNodeServer {
     this.app = express();
     this.server = http.createServer(this.app);
     this.config = config;
-    this.mcpBridge = null;
+    this.mcpClient = null;
     this.wsServer = null;
     this.eventManager = null;
     
@@ -65,7 +65,7 @@ class MCPGDBNodeServer {
         status: 'ok',
         timestamp: new Date().toISOString(),
         services: {
-          mcp_bridge: this.mcpBridge ? this.mcpBridge.isConnected() : false,
+          mcp_client: this.mcpClient ? this.mcpClient.isConnected() : false,
           websocket: this.wsServer ? this.wsServer.isRunning() : false
         }
       });
@@ -74,7 +74,7 @@ class MCPGDBNodeServer {
     // API routes
     this.app.get('/api/sessions', async (req, res) => {
       try {
-        const sessions = await this.mcpBridge.getSessions();
+        const sessions = await this.mcpClient.getSessions();
         res.json(sessions);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -83,7 +83,7 @@ class MCPGDBNodeServer {
 
     this.app.post('/api/sessions', async (req, res) => {
       try {
-        const session = await this.mcpBridge.createSession(req.body);
+        const session = await this.mcpClient.createSession(req.body);
         res.json(session);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -92,7 +92,7 @@ class MCPGDBNodeServer {
 
     this.app.get('/api/sessions/:id/variables', async (req, res) => {
       try {
-        const variables = await this.mcpBridge.getVariables(req.params.id);
+        const variables = await this.mcpClient.getVariables(req.params.id);
         res.json(variables);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -101,7 +101,7 @@ class MCPGDBNodeServer {
 
     this.app.get('/api/sessions/:id/registers', async (req, res) => {
       try {
-        const registers = await this.mcpBridge.getRegisters(req.params.id);
+        const registers = await this.mcpClient.getRegisters(req.params.id);
         res.json(registers);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -130,9 +130,9 @@ class MCPGDBNodeServer {
       // Initialize Event Manager
       this.eventManager = new EventManager();
 
-      // Initialize MCP Bridge
-      this.mcpBridge = new MCPBridge(this.config.mcp, this.eventManager);
-      await this.mcpBridge.connect();
+      // Initialize MCP Client
+      this.mcpClient = new MCPClient(this.config.mcp, this.eventManager);
+      await this.mcpClient.connect();
 
       // Initialize WebSocket Server
       this.wsServer = new WebSocketServer(this.server, this.config.websocket, this.eventManager);

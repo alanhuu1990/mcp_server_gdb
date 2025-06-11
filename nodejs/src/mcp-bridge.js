@@ -1,5 +1,5 @@
-const axios = require('axios');
 const EventEmitter = require('events');
+const EventSource = require('eventsource');
 
 class MCPBridge extends EventEmitter {
   constructor(config, eventManager) {
@@ -11,17 +11,11 @@ class MCPBridge extends EventEmitter {
     this.reconnectTimer = null;
     this.reconnectAttempts = 0;
     this.sessions = new Map();
-    
-    // Setup axios instance with timeout
-    this.client = axios.create({
-      baseURL: this.baseUrl,
-      timeout: config.bridge.timeout,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    this.eventSource = null;
+    this.requestId = 1;
+    this.pendingRequests = new Map();
 
-    this.setupAxiosInterceptors();
+    this.setupMCPClient();
   }
 
   setupAxiosInterceptors() {
