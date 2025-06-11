@@ -9,7 +9,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const WebSocketServer = require('./websocket-server');
-const MCPBridge = require('./mcp-bridge');
+const MCPClient = require('./mcp-client');
 const EventManager = require('./event-manager');
 const config = require('../config/default.json');
 
@@ -18,7 +18,7 @@ class MCPGDBNodeServer {
     this.app = express();
     this.server = http.createServer(this.app);
     this.config = config;
-    this.mcpBridge = null;
+    this.mcpClient = null;
     this.wsServer = null;
     this.eventManager = null;
     
@@ -65,7 +65,7 @@ class MCPGDBNodeServer {
         status: 'ok',
         timestamp: new Date().toISOString(),
         services: {
-          mcp_bridge: this.mcpBridge ? this.mcpBridge.isConnected() : false,
+          mcp_client: this.mcpClient ? this.mcpClient.isConnected() : false,
           websocket: this.wsServer ? this.wsServer.isRunning() : false
         }
       });
@@ -74,7 +74,7 @@ class MCPGDBNodeServer {
     // API routes
     this.app.get('/api/sessions', async (req, res) => {
       try {
-        const sessions = await this.mcpBridge.getSessions();
+        const sessions = await this.mcpClient.getSessions();
         res.json(sessions);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -83,7 +83,7 @@ class MCPGDBNodeServer {
 
     this.app.post('/api/sessions', async (req, res) => {
       try {
-        const session = await this.mcpBridge.createSession(req.body);
+        const session = await this.mcpClient.createSession(req.body);
         res.json(session);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -92,7 +92,7 @@ class MCPGDBNodeServer {
 
     this.app.get('/api/sessions/:id/variables', async (req, res) => {
       try {
-        const variables = await this.mcpBridge.getVariables(req.params.id);
+        const variables = await this.mcpClient.getVariables(req.params.id);
         res.json(variables);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -101,8 +101,121 @@ class MCPGDBNodeServer {
 
     this.app.get('/api/sessions/:id/registers', async (req, res) => {
       try {
-        const registers = await this.mcpBridge.getRegisters(req.params.id);
+        const registers = await this.mcpClient.getRegisters(req.params.id);
         res.json(registers);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Additional API endpoints for complete GDB functionality
+    this.app.delete('/api/sessions/:id', async (req, res) => {
+      try {
+        const result = await this.mcpClient.closeSession(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/start', async (req, res) => {
+      try {
+        const result = await this.mcpClient.startDebugging(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/stop', async (req, res) => {
+      try {
+        const result = await this.mcpClient.stopExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/continue', async (req, res) => {
+      try {
+        const result = await this.mcpClient.continueExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/step', async (req, res) => {
+      try {
+        const result = await this.mcpClient.stepExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/next', async (req, res) => {
+      try {
+        const result = await this.mcpClient.nextExecution(req.params.id);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/breakpoints', async (req, res) => {
+      try {
+        const breakpoints = await this.mcpClient.getBreakpoints(req.params.id);
+        res.json(breakpoints);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.post('/api/sessions/:id/breakpoints', async (req, res) => {
+      try {
+        const breakpoint = await this.mcpClient.setBreakpoint(req.params.id, req.body);
+        res.json(breakpoint);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.delete('/api/sessions/:id/breakpoints/:breakpointId', async (req, res) => {
+      try {
+        const result = await this.mcpClient.deleteBreakpoint(req.params.id, req.params.breakpointId);
+        res.json({ message: result });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/stack', async (req, res) => {
+      try {
+        const stackFrames = await this.mcpClient.getStackFrames(req.params.id);
+        res.json(stackFrames);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/register-names', async (req, res) => {
+      try {
+        const registerNames = await this.mcpClient.getRegisterNames(req.params.id);
+        res.json(registerNames);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    this.app.get('/api/sessions/:id/memory', async (req, res) => {
+      try {
+        const { address, size } = req.query;
+        if (!address || !size) {
+          return res.status(400).json({ error: 'address and size parameters are required' });
+        }
+        const memoryData = await this.mcpClient.readMemory(req.params.id, address, parseInt(size, 10));
+        res.json(memoryData);
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
@@ -130,9 +243,15 @@ class MCPGDBNodeServer {
       // Initialize Event Manager
       this.eventManager = new EventManager();
 
-      // Initialize MCP Bridge
-      this.mcpBridge = new MCPBridge(this.config.mcp, this.eventManager);
-      await this.mcpBridge.connect();
+      // Initialize MCP Client (but don't fail if connection fails)
+      this.mcpClient = new MCPClient(this.config.mcp, this.eventManager);
+      try {
+        await this.mcpClient.connect();
+        console.log('MCP Client connected successfully');
+      } catch (error) {
+        console.warn('MCP Client connection failed (will retry automatically):', error.message);
+        // Don't exit - let the client handle reconnection
+      }
 
       // Initialize WebSocket Server
       this.wsServer = new WebSocketServer(this.server, this.config.websocket, this.eventManager);
@@ -167,8 +286,8 @@ class MCPGDBNodeServer {
       await this.wsServer.stop();
     }
     
-    if (this.mcpBridge) {
-      await this.mcpBridge.disconnect();
+    if (this.mcpClient) {
+      await this.mcpClient.disconnect();
     }
     
     this.server.close(() => {
