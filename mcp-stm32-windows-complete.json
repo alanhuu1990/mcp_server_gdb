@@ -1,0 +1,53 @@
+{
+  "mcpServers": {
+    "stm32-gdb": {
+      "command": "D:/Custom-Power-Project/Tools/mcp-servers/mcp_server_gdb/target/release/mcp-server-gdb.exe",
+      "args": ["--log-level", "info"],
+      "cwd": "D:/Custom-Power-Project/Tools/mcp-servers/mcp_server_gdb",
+      "env": {
+        "SERVER_IP": "127.0.0.1",
+        "SERVER_PORT": "8080",
+        "GDB_COMMAND_TIMEOUT": "30",
+        "RUST_LOG": "info",
+        "GDB_PATH": "arm-none-eabi-gdb.exe",
+        "STLINK_GDBSERVER_PATH": "C:\\ST\\STM32CubeIDE_1.18.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.100.202501151542\\tools\\bin\\ST-LINK_gdbserver.exe",
+        "CUBEPROGRAMMER_PATH": "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin"
+      }
+    }
+  },
+  "windows_debugging": {
+    "description": "Windows-specific STM32 debugging configuration",
+    "tools": {
+      "arm_gdb": "arm-none-eabi-gdb.exe",
+      "stlink_server": "C:\\ST\\STM32CubeIDE_1.18.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.100.202501151542\\tools\\bin\\ST-LINK_gdbserver.exe",
+      "cubeprogrammer": "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin"
+    },
+    "scripts": {
+      "start_server": "start_stlink_server_windows.bat",
+      "debug_session": "debug_stm32_windows.bat",
+      "powershell_debug": "debug_stm32_windows.ps1"
+    },
+    "connection": {
+      "target": "extended-remote",
+      "host": "localhost",
+      "port": 4242,
+      "device_serial": "37FF6F0630484B3820451343"
+    },
+    "troubleshooting": {
+      "common_issues": [
+        "ST-Link driver not installed",
+        "Device not connected or powered",
+        "Port 4242 already in use",
+        "STM32CubeProgrammer path incorrect",
+        "ARM GDB not in PATH"
+      ],
+      "solutions": [
+        "Install ST-Link drivers from STMicroelectronics",
+        "Check USB connection and device power",
+        "Kill existing GDB server processes",
+        "Verify STM32CubeProgrammer installation",
+        "Add STM32CubeIDE tools to PATH"
+      ]
+    }
+  }
+}

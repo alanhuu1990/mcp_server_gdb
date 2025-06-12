@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP GDB Real-Time Debugging Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-bug"></i> MCP GDB Real-Time Debugging</h1>
+                <div class="connection-status">
+                    <span id="connection-indicator" class="status-indicator disconnected">
+                        <i class="fas fa-circle"></i> Disconnected
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-gamepad"></i> Debug Controls</h2>
+                </div>
+                <div class="controls">
+                    <button id="btn-continue" class="btn btn-success" disabled>
+                        <i class="fas fa-play"></i> Continue
+                    </button>
+                    <button id="btn-step" class="btn btn-primary" disabled>
+                        <i class="fas fa-step-forward"></i> Step
+                    </button>
+                    <button id="btn-stop" class="btn btn-danger" disabled>
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                    <button id="btn-refresh" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </section>
+
+            <!-- Sessions Panel -->
+            <section class="sessions-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-list"></i> Debug Sessions</h2>
+                    <button id="btn-new-session" class="btn btn-outline">
+                        <i class="fas fa-plus"></i> New Session
+                    </button>
+                </div>
+                <div id="sessions-list" class="sessions-list">
+                    <div class="no-sessions">No active sessions</div>
+                </div>
+            </section>
+
+            <!-- Data Panels Container -->
+            <div class="data-panels">
+                <!-- Variables Panel -->
+                <section class="variables-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-code"></i> Variables</h3>
+                        <div class="panel-controls">
+                            <label class="auto-refresh">
+                                <input type="checkbox" id="auto-refresh-vars" checked>
+                                Auto-refresh
+                            </label>
+                        </div>
+                    </div>
+                    <div id="variables-content" class="panel-content">
+                        <div class="no-data">Select a session to view variables</div>
+                    </div>
+                </section>
+
+                <!-- Registers Panel -->
+                <section class="registers-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-microchip"></i> Registers</h3>
+                        <div class="panel-controls">
+                            <label class="auto-refresh">
+                                <input type="checkbox" id="auto-refresh-regs" checked>
+                                Auto-refresh
+                            </label>
+                        </div>
+                    </div>
+                    <div id="registers-content" class="panel-content">
+                        <div class="no-data">Select a session to view registers</div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Breakpoints Panel -->
+            <section class="breakpoints-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-pause-circle"></i> Breakpoints</h3>
+                    <button id="btn-add-breakpoint" class="btn btn-outline btn-sm" disabled>
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+                <div id="breakpoints-content" class="panel-content">
+                    <div class="no-data">No breakpoints set</div>
+                </div>
+            </section>
+
+            <!-- Logs Panel -->
+            <section class="logs-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-terminal"></i> Debug Logs</h3>
+                    <div class="panel-controls">
+                        <button id="btn-clear-logs" class="btn btn-outline btn-sm">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                        <label class="auto-refresh">
+                            <input type="checkbox" id="auto-scroll-logs" checked>
+                            Auto-scroll
+                        </label>
+                    </div>
+                </div>
+                <div id="logs-content" class="logs-content">
+                    <div class="log-entry info">
+                        <span class="timestamp">[Loading...]</span>
+                        <span class="message">Connecting to debug server...</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="new-session-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Debug Session</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="new-session-form">
+                    <div class="form-group">
+                        <label for="program-path">Program Path (.elf file):</label>
+                        <input type="text" id="program-path" name="program" required 
+                               placeholder="/path/to/program.elf">
+                    </div>
+                    <div class="form-group">
+                        <label for="gdb-path">GDB Path:</label>
+                        <input type="text" id="gdb-path" name="gdb_path" 
+                               value="arm-none-eabi-gdb" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="session-name">Session Name:</label>
+                        <input type="text" id="session-name" name="name" 
+                               placeholder="STM32 Debug Session">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                <button type="submit" form="new-session-form" class="btn btn-primary">Create Session</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-breakpoint-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Breakpoint</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-breakpoint-form">
+                    <div class="form-group">
+                        <label for="bp-file">File:</label>
+                        <input type="text" id="bp-file" name="file" required 
+                               placeholder="main.c">
+                    </div>
+                    <div class="form-group">
+                        <label for="bp-line">Line Number:</label>
+                        <input type="number" id="bp-line" name="line" required 
+                               placeholder="42" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bp-condition">Condition (optional):</label>
+                        <input type="text" id="bp-condition" name="condition" 
+                               placeholder="counter > 100">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="bp-modal-cancel">Cancel</button>
+                <button type="submit" form="add-breakpoint-form" class="btn btn-primary">Add Breakpoint</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

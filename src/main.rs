@@ -1,4 +1,5 @@
 mod config;
+mod custom_protocol;
 mod error;
 mod gdb;
 mod mi;
@@ -334,7 +335,7 @@ async fn main() -> Result<(), AppError> {
         }
         TransportType::Sse => {
             let transport = Arc::new(Box::new(ServerSseTransport::new(
-                config.server_ip,
+                config.server_ip.clone(),
                 config.server_port,
                 server_protocol,
             )) as Box<dyn Transport>);
@@ -354,6 +355,42 @@ async fn main() -> Result<(), AppError> {
         }
     });
 
+    // Start custom protocol HTTP server for SSE transport
+    let http_server_handle = if args.transport == TransportType::Sse {
+        let http_port = config.server_port + 1;
+        info!("Starting custom protocol HTTP server on {}:{}", config.server_ip, http_port);
+        debug!("Transport type: {:?}, Server port: {}, HTTP port: {}", args.transport, config.server_port, http_port);
+
+        let app = custom_protocol::create_router()
+            .layer(tower_http::cors::CorsLayer::permissive())
+            .layer(tower_http::trace::TraceLayer::new_for_http());
+
+        let bind_addr = format!("{}:{}", config.server_ip, http_port);
+        debug!("Attempting to bind HTTP server to: {}", bind_addr);
+
+        let listener = tokio::net::TcpListener::bind(&bind_addr)
+            .await
+            .map_err(|e| {
+                error!("Failed to bind HTTP server to {}: {}", bind_addr, e);
+                AppError::GDBError(format!("Failed to bind HTTP server to {}: {}", bind_addr, e))
+            })?;
+
+        let local_addr = listener.local_addr().unwrap();
+        info!("Custom protocol HTTP server bound to: {}", local_addr);
+
+        Some(tokio::spawn(async move {
+            info!("Custom protocol HTTP server listening on {}", local_addr);
+            if let Err(e) = axum::serve(listener, app).await {
+                error!("HTTP server error: {}", e);
+            } else {
+                info!("HTTP server started successfully");
+            }
+        }))
+    } else {
+        debug!("Not starting HTTP server - transport type is: {:?}", args.transport);
+        None
+    };
+
     // Wait for quit signal if TUI is running
     if let Some((terminal, tui_handle, quit_receiver)) = ui_handle {
         if let Err(e) = quit_receiver.await {
@@ -369,11 +406,24 @@ async fn main() -> Result<(), AppError> {
         terminal.show_cursor()?;
         debug!("TUI closed");
     } else {
-        // If no TUI, wait for transport to complete
-        debug!("waiting for transport to complete");
-        if let Err(e) = transport_handle.await {
-            error!("transport task error: {}", e);
+        // If no TUI, wait for both transport and HTTP server to run concurrently
+        debug!("waiting for transport and HTTP server to complete");
+
+        // Create a vector of futures to wait for
+        let mut futures = vec![transport_handle];
+
+        // Add HTTP server handle if it was started
+        if let Some(http_handle) = http_server_handle {
+            futures.push(http_handle);
         }
+
+        // Wait for any of the futures to complete (they should run indefinitely)
+        let (result, _index, _remaining) = futures::future::select_all(futures).await;
+
+        if let Err(e) = result {
+            error!("Server task error: {}", e);
+        }
+
         return Ok(());
     }
 
@@ -382,6 +432,12 @@ async fn main() -> Result<(), AppError> {
         error!("failed to close transport: {}", e);
     }
     transport_handle.abort();
+
+    // Close HTTP server if it was started
+    if let Some(http_handle) = http_server_handle {
+        info!("Shutting down custom protocol HTTP server");
+        http_handle.abort();
+    }
 
     // Close all GDB sessions
     let sessions = tools::GDB_MANAGER.get_all_sessions().await?;
